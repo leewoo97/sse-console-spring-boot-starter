@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SSE / API Test Console</title>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   Roboto, Helvetica, Arial, sans-serif;
+      background: #fafafa;
+      padding: 16px;
+      color: #333;
+    }
+
+    h2 { margin-bottom: 6px; }
+
+    .hint {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 16px;
+    }
+
+    .endpoint {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    .header { margin-bottom: 10px; }
+
+    .tag {
+      font-size: 12px;
+      color: #2563eb;
+      margin-bottom: 4px;
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .method {
+      font-weight: 700;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .summary {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .path {
+      font-family: monospace;
+      font-size: 13px;
+      color: #374151;
+      background: #f3f4f6;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .section-title {
+      margin-top: 14px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    textarea {
+      width: 100%;
+      height: 130px;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      resize: vertical;
+      /* 너비가 부모를 넘지 않도록 수정 */
+      box-sizing: border-box; 
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 8px;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-send { background: #2563eb; color: #fff; border: none; }
+    .btn-disconnect {
+      background: #fff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .console-wrapper {
+      position: relative;
+      margin-top: 12px;
+    }
+
+    .console-clear {
+      position: absolute;
+      top: 6px;
+      right: 18px;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      display: none;
+    }
+
+    pre {
+      background: #111827;
+      color: #22c55e;
+      padding: 12px;
+      border-radius: 6px;
+      height: 220px;
+      overflow: auto;
+      resize: vertical;
+      font-size: 12px;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      /* 너비가 부모를 넘지 않도록 수정 */
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .timeline {
+      margin-top: 14px;
+      padding-left: 12px;
+      border-left: 2px solid #e5e7eb;
+      display: none;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 10px;
+      padding-left: 14px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      top: 3px;
+      width: 8px;
+      height: 8px;
+      background: #2563eb;
+      border-radius: 50%;
+    }
+
+    .timeline-item.loading::before { background: #f59e0b; }
+    .timeline-item.response::before { background: #16a34a; }
+    .timeline-item.error::before { background: #dc2626; }
+    .timeline-item.closed::before { background: #9ca3af; }
+
+    .timeline-item.active {
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>SSE / API Test Console</h2>
+<div class="hint">
+  타임라인 클릭 시 해당 이벤트 데이터만 콘솔에 표시 (모든 이벤트 감지)
+</div>
+
+<div id="endpoints"></div>
+
+<script>
+  const HTTP_METHODS = ["get","post","put","delete","patch","options","head","trace"];
+  let refreshKey = 0;
+  let schemaStore = {};
+  const connections = {};
+  const eventStore = {};
+
+
+  document.addEventListener("DOMContentLoaded", loadApiList);
+
+  async function loadApiList() {
+    const res = await fetch("/sse-console/api-list?_=" + Date.now(), { cache: "no-store" });
+    const endpoints = await res.json();
+    renderEndpoints(endpoints);
+  }
+
+  function renderEndpoints(endpoints) {
+    const root = document.getElementById("endpoints");
+    root.innerHTML = "";
+
+    endpoints.forEach((ep, idx) => {
+      eventStore[idx] = [];
+
+      const example = buildRequestExample(ep.parameters);
+
+      const div = document.createElement("div");
+      div.className = "endpoint";
+      div.innerHTML = `
+        <div class="header">
+          <div class="tag">${ep.tag}</div>
+          <div class="summary-row">
+            <span class="method">${ep.method}</span>
+            <span class="summary">${ep.summary}</span>
+          </div>
+          <div class="path">${ep.path}</div>
+        </div>
+
+        <div class="section-title">Query Parameters</div>
+        <textarea id="body-${idx}">${JSON.stringify(example, null, 2)}</textarea>
+
+        <div class="actions">
+          <button class="btn-send" onclick="connect(${idx}, '${ep.path}')">
+            Try it out (Catch All)
+          </button>
+          <button class="btn-disconnect" onclick="disconnect(${idx})">
+            Disconnect
+          </button>
+        </div>
+
+        <div class="console-wrapper">
+          <button class="console-clear" id="clear-${idx}" onclick="clearLog(${idx})">
+            Clear
+          </button>
+          <pre id="log-${idx}"></pre>
+        </div>
+
+        <div class="timeline" id="timeline-${idx}"></div>
+      `;
+      root.appendChild(div);
+    });
+  }
+
+  function addTimelineEvent(idx, type, label, payload) {
+    const tl = document.getElementById(`timeline-${idx}`);
+    tl.style.display = "block";
+
+    const eventIndex = eventStore[idx].length;
+    eventStore[idx].push(payload);
+
+    const item = document.createElement("div");
+    item.className = `timeline-item ${type}`;
+    item.innerHTML = `
+      <span class="timeline-label">${label}</span>
+      <span class="timeline-time">${new Date().toLocaleTimeString()}</span>
+    `;
+
+    item.onclick = () => showEvent(idx, eventIndex, item);
+    tl.appendChild(item);
+  }
+
+  function showEvent(idx, eventIndex, el) {
+    const log = document.getElementById(`log-${idx}`);
+    document.querySelectorAll(`#timeline-${idx} .timeline-item`).forEach(i => i.classList.remove("active"));
+    el.classList.add("active");
+    log.textContent = JSON.stringify(eventStore[idx][eventIndex], null, 2);
+  }
+
+  function clearLog(idx) {
+    document.getElementById(`log-${idx}`).textContent = "";
+    document.getElementById(`clear-${idx}`).style.display = "none";
+    const tl = document.getElementById(`timeline-${idx}`);
+    tl.innerHTML = "";
+    tl.style.display = "none";
+    eventStore[idx] = [];
+  }
+
+
+  function buildRequestExample(parameters) {
+    const result = {};
+    parameters.forEach(p => {
+      // 단순화: type별 기본값만 생성
+      if (p.type === "string") result[p.name] = "";
+      else if (p.type === "integer" || p.type === "number") result[p.name] = 0;
+      else if (p.type === "boolean") result[p.name] = false;
+      else result[p.name] = null;
+    });
+    return result;
+  }
+
+  async function connect(idx, path) {
+    disconnect(idx);
+
+    let body;
+    try {
+      body = JSON.parse(document.getElementById(`body-${idx}`).value);
+    } catch {
+      alert("Invalid JSON");
+      return;
+    }
+
+    const params = new URLSearchParams(body);
+    params.append("_refresh", ++refreshKey);
+
+    const log = document.getElementById(`log-${idx}`);
+    const clearBtn = document.getElementById(`clear-${idx}`);
+
+    log.textContent += "▶ CONNECTING (STREAM MODE)...\n";
+    clearBtn.style.display = "block";
+
+    try {
+      const controller = new AbortController();
+      connections[idx] = controller;
+
+      addTimelineEvent(idx, "open", "open", { status: "connected" });
+
+      const response = await fetch(`${path}?${params}`, { signal: controller.signal });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        
+        if (done) {
+          log.textContent += "⏹ Server closed the stream\n";
+          disconnect(idx);
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop();
+
+        parts.forEach(message => {
+          if (!message.trim()) return;
+
+          let eventName = "message";
+          let dataContent = "";
+
+          message.split("\n").forEach(line => {
+            if (line.startsWith("event:")) eventName = line.replace("event:", "").trim();
+            else if (line.startsWith("data:")) dataContent += line.replace("data:", "").trim();
+          });
+
+          let parsedData;
+          try { 
+            parsedData = JSON.parse(dataContent); 
+            log.textContent += `[${eventName}] ${JSON.stringify(parsedData, null, 2)}\n`;
+          } catch { 
+            parsedData = dataContent; 
+            log.textContent += `[${eventName}] ${dataContent}\n`;
+          }
+
+          addTimelineEvent(idx, (eventName === "error" ? "error" : (eventName.includes("loading") ? "loading" : "response")), eventName, parsedData);
+
+          if (eventName === "response") {
+            disconnect(idx);
+          }
+        });
+        log.scrollTop = log.scrollHeight;
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        log.textContent += "⚠ SSE error\n";
+        addTimelineEvent(idx, "error", "error", { error: true });
+        disconnect(idx);
+      }
+    }
+  }
+
+  function disconnect(idx) {
+    if (connections[idx]) {
+      if (connections[idx].abort) connections[idx].abort();
+      else if (connections[idx].close) connections[idx].close();
+      
+      connections[idx] = null;
+      document.getElementById(`log-${idx}`).textContent += "⏹ Disconnected\n";
+      addTimelineEvent(idx, "closed", "closed", { closed: true });
+    }
+  }
+</script>
+
+</body>
+</html>
