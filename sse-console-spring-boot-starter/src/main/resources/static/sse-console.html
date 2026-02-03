@@ -329,6 +329,39 @@
       addTimelineEvent(idx, "open", "open", { status: "connected" });
 
       const response = await fetch(`${path}?${params}`, { signal: controller.signal });
+
+      if (!response.ok) {
+        const text = await response.text();
+        log.textContent += `⚠ HTTP ${response.status} ${response.statusText}\n`;
+        log.textContent += text + "\n";
+        addTimelineEvent(idx, "error", "http-error", {
+          status: response.status,
+          statusText: response.statusText,
+          contentType: response.headers.get("content-type") || "",
+        });
+        disconnect(idx);
+        return;
+      }
+
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("text/event-stream")) {
+        const text = await response.text();
+        log.textContent += `⚠ Not an SSE response (content-type: ${contentType || "(none)"})\n`;
+        log.textContent += text + "\n";
+        addTimelineEvent(idx, "error", "not-sse", {
+          contentType,
+        });
+        disconnect(idx);
+        return;
+      }
+
+      if (!response.body) {
+        log.textContent += "⚠ Empty response body\n";
+        addTimelineEvent(idx, "error", "empty-body", { empty: true });
+        disconnect(idx);
+        return;
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
