@@ -14,7 +14,7 @@
 
     <groupId>io.github.leewoo97</groupId>
     <artifactId>sse-console-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>SSE Console Spring Boot Starter</name>
     <description>Spring Boot Starter for testing and demonstrating SseEmitter endpoints with a built-in web console tool page.</description>
     <url>https://github.com/leewoo97/sse-console-spring-boot-starter</url>
@@ -112,11 +112,10 @@
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.4.0</version>
+                <version>0.10.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
                     <autoPublish>true</autoPublish>
                 </configuration>
             </plugin>

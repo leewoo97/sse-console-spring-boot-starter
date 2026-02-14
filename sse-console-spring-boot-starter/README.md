@@ -5,7 +5,8 @@ Spring Boot 프로젝트에서 SseEmitter 기반 SSE API를 쉽고 빠르게 테
 ## 주요 특징
 - `/sse-console.html` 웹 콘솔 제공 (자동 포함)
 - 프로젝트 내 SSE 엔드포인트 자동 탐색 및 목록화
-- 다양한 테스트용 샘플 컨트롤러 제공(예제)
+
+> 참고: 본 Starter는 **콘솔 페이지 + 목록 API**를 제공합니다. 테스트용 SSE 엔드포인트(예제 컨트롤러)는 별도의 샘플 프로젝트([sse-console-sample](../sse-console-sample))에 포함되어 있습니다.
 
 ## 빠른 시작
 1. 의존성 추가 (Maven)
@@ -13,8 +14,15 @@ Spring Boot 프로젝트에서 SseEmitter 기반 SSE API를 쉽고 빠르게 테
 <dependency>
   <groupId>io.github.leewoo97</groupId>
   <artifactId>sse-console-spring-boot-starter</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
+```
+
+1-1. 의존성 추가 (Gradle)
+```gradle
+dependencies {
+  implementation "io.github.leewoo97:sse-console-spring-boot-starter:1.0.1"
+}
 ```
 
 2. 애플리케이션 실행 후 브라우저에서 접속:
@@ -26,6 +34,10 @@ http://localhost:8080/sse-console.html
 - 프로젝트 내 REST/SSE 엔드포인트를 자동으로 탐색하여 목록화
 - 파라미터 입력 및 실시간 SSE 메시지 수신 테스트 가능
 
+### 동작 조건
+- Spring Boot 3.x + Servlet(WebMVC) 환경에서 동작합니다.
+- 애플리케이션에 SSE 엔드포인트(`produces = text/event-stream`)가 존재하면 자동으로 목록에 표시됩니다.
+
 ## 샘플 엔드포인트 예시
 - `/sse/test` : 기본 SSE 메시지 스트림
 - `/sse/counter` : 카운트 업 이벤트
@@ -33,7 +45,7 @@ http://localhost:8080/sse-console.html
 - `/sse/json` : JSON 오브젝트 스트림 등
 
 ## 배포 및 라이선스
-- Maven Central에 배포 예정
+- Maven Central 배포
 - 라이선스: MIT
 
 ## 기여 및 문의
