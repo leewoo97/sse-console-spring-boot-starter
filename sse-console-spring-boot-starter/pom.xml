@@ -11,9 +11,32 @@
         <relativePath/>
     </parent>
 
+
     <groupId>io.github.leewoo97</groupId>
     <artifactId>sse-console-spring-boot-starter</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
+    <name>SSE Console Spring Boot Starter</name>
+    <description>Spring Boot Starter for testing and demonstrating SseEmitter endpoints with a built-in web console tool page.</description>
+    <url>https://github.com/leewoo97/sse-console-spring-boot-starter</url>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>leewoo97</id>
+            <name>leewoo97</name>
+            <email>your-email@example.com</email>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://github.com/leewoo97/sse-console-spring-boot-starter</url>
+        <connection>scm:git:git://github.com/leewoo97/sse-console-spring-boot-starter.git</connection>
+        <developerConnection>scm:git:ssh://github.com/leewoo97/sse-console-spring-boot-starter.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -27,4 +50,90 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
     </dependencies>
+
+    <!-- Maven Central 배포 저장소 설정 (Central Portal) -->
+    <distributionManagement>
+        <!-- Release 버전 배포 위치 (Central Portal) -->
+        <repository>
+            <id>central</id>
+            <url>https://central.sonatype.com/api/v1/publisher</url>
+        </repository>
+        <!-- SNAPSHOT 버전 배포 위치 (개발 중 버전) -->
+        <snapshotRepository>
+            <id>central</id>
+            <url>https://central.sonatype.com/api/v1/publisher</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <build>
+        <plugins>
+            <!-- Maven Central 필수: 소스 코드 JAR 생성 플러그인 -->
+            <!-- 사용자가 라이브러리 소스를 IDE에서 직접 볼 수 있도록 소스 파일을 jar로 패키징 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Central 필수: JavaDoc JAR 생성 플러그인 -->
+            <!-- API 문서(JavaDoc)를 jar로 패키징하여 문서 제공 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- JavaDoc 검사를 느슨하게 설정 (경고 무시) -->
+                    <doclint>none</doclint>
+                    <source>17</source>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Central 필수: GPG 서명 플러그인 -->
+            <!-- 배포하는 아티팩트의 무결성과 신뢰성을 보장하기 위해 GPG 키로 서명 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Central Publishing Plugin -->
+            <!-- Maven Central (Central Portal) 배포 프로세스를 자동화 -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.4.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <tokenAuth>true</tokenAuth>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

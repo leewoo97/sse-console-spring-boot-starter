@@ -5,6 +5,7 @@
   <title>SSE / API Test Console</title>
 
   <style>
+    /* 기본 페이지 스타일 */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                    Roboto, Helvetica, Arial, sans-serif;
@@ -15,12 +16,14 @@
 
     h2 { margin-bottom: 6px; }
 
+    /* 안내 문구 스타일 */
     .hint {
       font-size: 13px;
       color: #666;
       margin-bottom: 16px;
     }
 
+    /* 각 SSE 엔드포인트 카드 스타일 */
     .endpoint {
       background: #fff;
       border: 1px solid #e5e7eb;
@@ -32,12 +35,14 @@
 
     .header { margin-bottom: 10px; }
 
+    /* 컨트롤러 클래스명 태그 */
     .tag {
       font-size: 12px;
       color: #2563eb;
       margin-bottom: 4px;
     }
 
+    /* 메서드명과 HTTP 메서드 행 */
     .summary-row {
       display: flex;
       align-items: center;
@@ -45,6 +50,7 @@
       margin-bottom: 4px;
     }
 
+    /* HTTP 메서드 배지 (GET, POST 등) */
     .method {
       font-weight: 700;
       font-size: 12px;
@@ -54,11 +60,13 @@
       color: #fff;
     }
 
+    /* 엔드포인트 메서드명 */
     .summary {
       font-size: 16px;
       font-weight: 600;
     }
 
+    /* URL 경로 표시 */
     .path {
       font-family: monospace;
       font-size: 13px;
@@ -77,6 +85,7 @@
       color: #374151;
     }
 
+    /* Query Parameters 입력 영역 (JSON 형식) */
     textarea {
       width: 100%;
       height: 130px;
@@ -87,10 +96,10 @@
       border: 1px solid #d1d5db;
       background: #f9fafb;
       resize: vertical;
-      /* 너비가 부모를 넘지 않도록 수정 */
       box-sizing: border-box; 
     }
 
+    /* 버튼 영역 */
     .actions {
       display: flex;
       gap: 8px;
@@ -105,18 +114,22 @@
       cursor: pointer;
     }
 
+    /* 전송 버튼 스타일 */
     .btn-send { background: #2563eb; color: #fff; border: none; }
+    /* 연결 해제 버튼 스타일 */
     .btn-disconnect {
       background: #fff;
       color: #374151;
       border: 1px solid #d1d5db;
     }
 
+    /* 콘솔 로그 영역 래퍼 */
     .console-wrapper {
       position: relative;
       margin-top: 12px;
     }
 
+    /* 콘솔 클리어 버튼 */
     .console-clear {
       position: absolute;
       top: 6px;
@@ -127,9 +140,10 @@
       background: rgba(255,255,255,0.9);
       border: 1px solid #d1d5db;
       cursor: pointer;
-      display: none;
+      display: none; /* 기본적으로 숨김, 로그가 있을 때만 표시 */
     }
 
+    /* 콘솔 로그 출력 영역 (터미널 스타일) */
     pre {
       background: #111827;
       color: #22c55e;
@@ -142,18 +156,19 @@
       margin: 0;
       white-space: pre-wrap;
       word-break: break-all;
-      /* 너비가 부모를 넘지 않도록 수정 */
       width: 100%;
       box-sizing: border-box;
     }
 
+    /* 이벤트 타임라인 영역 */
     .timeline {
       margin-top: 14px;
       padding-left: 12px;
       border-left: 2px solid #e5e7eb;
-      display: none;
+      display: none; /* 기본적으로 숨김, 이벤트가 있을 때만 표시 */
     }
 
+    /* 타임라인 각 이벤트 아이템 */
     .timeline-item {
       position: relative;
       margin-bottom: 10px;
@@ -162,6 +177,7 @@
       cursor: pointer;
     }
 
+    /* 타임라인 이벤트 마커 (점) */
     .timeline-item::before {
       content: "";
       position: absolute;
@@ -173,11 +189,13 @@
       border-radius: 50%;
     }
 
-    .timeline-item.loading::before { background: #f59e0b; }
-    .timeline-item.response::before { background: #16a34a; }
-    .timeline-item.error::before { background: #dc2626; }
-    .timeline-item.closed::before { background: #9ca3af; }
+    /* 이벤트 타입별 색상 */
+    .timeline-item.loading::before { background: #f59e0b; } /* 로딩 상태: 주황색 */
+    .timeline-item.response::before { background: #16a34a; } /* 응답: 초록색 */
+    .timeline-item.error::before { background: #dc2626; } /* 에러: 빨간색 */
+    .timeline-item.closed::before { background: #9ca3af; } /* 종료: 회색 */
 
+    /* 선택된 타임라인 아이템 강조 */
     .timeline-item.active {
       font-weight: 600;
     }
@@ -191,31 +209,52 @@
   타임라인 클릭 시 해당 이벤트 데이터만 콘솔에 표시 (모든 이벤트 감지)
 </div>
 
+<!-- 동적으로 SSE 엔드포인트 목록이 렌더링될 컨테이너 -->
 <div id="endpoints"></div>
 
 <script>
+  // HTTP 메서드 목록
   const HTTP_METHODS = ["get","post","put","delete","patch","options","head","trace"];
+  
+  // 새로고침 키 (캐시 방지용)
   let refreshKey = 0;
+  
+  // 스키마 저장소 (사용되지 않음, 향후 확장 가능)
   let schemaStore = {};
+  
+  // 각 엔드포인트별 SSE 연결 관리 객체
   const connections = {};
+  
+  // 각 엔드포인트별 수신한 이벤트 데이터 저장소
+  // 각 엔드포인트별 수신한 이벤트 데이터 저장소
   const eventStore = {};
 
 
+  // 페이지 로드 시 API 목록 불러오기
   document.addEventListener("DOMContentLoaded", loadApiList);
 
+  /**
+   * 서버로부터 SSE 엔드포인트 목록을 가져와 화면에 렌더링
+   */
   async function loadApiList() {
     const res = await fetch("/sse-console/api-list?_=" + Date.now(), { cache: "no-store" });
     const endpoints = await res.json();
     renderEndpoints(endpoints);
   }
 
+  /**
+   * 엔드포인트 목록을 화면에 렌더링
+   * 각 엔드포인트마다 카드 형태의 UI를 생성
+   */
   function renderEndpoints(endpoints) {
     const root = document.getElementById("endpoints");
     root.innerHTML = "";
 
     endpoints.forEach((ep, idx) => {
+      // 각 엔드포인트별 이벤트 저장소 초기화
       eventStore[idx] = [];
 
+      // 파라미터 기반으로 예시 요청 JSON 생성
       const example = buildRequestExample(ep.parameters);
 
       const div = document.createElement("div");
@@ -255,6 +294,13 @@
     });
   }
 
+  /**
+   * 타임라인에 이벤트 항목 추가
+   * @param {number} idx - 엔드포인트 인덱스
+   * @param {string} type - 이벤트 타입 (open, loading, response, error, closed)
+   * @param {string} label - 이벤트 라벨
+   * @param {*} payload - 이벤트 데이터
+   */
   function addTimelineEvent(idx, type, label, payload) {
     const tl = document.getElementById(`timeline-${idx}`);
     tl.style.display = "block";
@@ -269,10 +315,14 @@
       <span class="timeline-time">${new Date().toLocaleTimeString()}</span>
     `;
 
+    // 타임라인 항목 클릭 시 해당 이벤트 데이터만 콘솔에 표시
     item.onclick = () => showEvent(idx, eventIndex, item);
     tl.appendChild(item);
   }
 
+  /**
+   * 특정 이벤트 데이터를 콘솔에 표시
+   */
   function showEvent(idx, eventIndex, el) {
     const log = document.getElementById(`log-${idx}`);
     document.querySelectorAll(`#timeline-${idx} .timeline-item`).forEach(i => i.classList.remove("active"));
@@ -280,6 +330,9 @@
     log.textContent = JSON.stringify(eventStore[idx][eventIndex], null, 2);
   }
 
+  /**
+   * 콘솔 로그 및 타임라인 초기화
+   */
   function clearLog(idx) {
     document.getElementById(`log-${idx}`).textContent = "";
     document.getElementById(`clear-${idx}`).style.display = "none";
@@ -289,11 +342,13 @@
     eventStore[idx] = [];
   }
 
-
+  /**
+   * 파라미터 정보를 기반으로 예시 요청 JSON 객체 생성
+   */
   function buildRequestExample(parameters) {
     const result = {};
     parameters.forEach(p => {
-      // 단순화: type별 기본값만 생성
+      // 타입별 기본값 설정
       if (p.type === "string") result[p.name] = "";
       else if (p.type === "integer" || p.type === "number") result[p.name] = 0;
       else if (p.type === "boolean") result[p.name] = false;
@@ -302,9 +357,16 @@
     return result;
   }
 
+  /**
+   * SSE 연결 시작
+   * @param {number} idx - 엔드포인트 인덱스
+   * @param {string} path - SSE 엔드포인트 경로
+   */
   async function connect(idx, path) {
+    // 기존 연결이 있으면 먼저 종료
     disconnect(idx);
 
+    // Query Parameters JSON 파싱
     let body;
     try {
       body = JSON.parse(document.getElementById(`body-${idx}`).value);
@@ -313,6 +375,7 @@
       return;
     }
 
+    // Query String 생성
     const params = new URLSearchParams(body);
     params.append("_refresh", ++refreshKey);
 
@@ -323,13 +386,16 @@
     clearBtn.style.display = "block";
 
     try {
+      // AbortController로 연결 취소 제어
       const controller = new AbortController();
       connections[idx] = controller;
 
       addTimelineEvent(idx, "open", "open", { status: "connected" });
 
+      // Fetch API로 SSE 스트림 연결
       const response = await fetch(`${path}?${params}`, { signal: controller.signal });
 
+      // HTTP 에러 체크
       if (!response.ok) {
         const text = await response.text();
         log.textContent += `⚠ HTTP ${response.status} ${response.statusText}\n`;
@@ -343,6 +409,7 @@
         return;
       }
 
+      // Content-Type이 text/event-stream인지 확인
       const contentType = (response.headers.get("content-type") || "").toLowerCase();
       if (!contentType.includes("text/event-stream")) {
         const text = await response.text();
@@ -355,6 +422,7 @@
         return;
       }
 
+      // Response body가 비어있는지 확인
       if (!response.body) {
         log.textContent += "⚠ Empty response body\n";
         addTimelineEvent(idx, "error", "empty-body", { empty: true });
@@ -362,6 +430,7 @@
         return;
       }
 
+      // ReadableStream으로 SSE 데이터 스트리밍 읽기
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
@@ -369,27 +438,32 @@
       while (true) {
         const { value, done } = await reader.read();
         
+        // 스트림 종료
         if (done) {
           log.textContent += "⏹ Server closed the stream\n";
           disconnect(idx);
           break;
         }
 
+        // 버퍼에 데이터 누적 후 "\n\n"으로 메시지 분리
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split("\n\n");
         buffer = parts.pop();
 
+        // 각 SSE 메시지 파싱
         parts.forEach(message => {
           if (!message.trim()) return;
 
           let eventName = "message";
           let dataContent = "";
 
+          // "event:" 와 "data:" 라인 파싱
           message.split("\n").forEach(line => {
             if (line.startsWith("event:")) eventName = line.replace("event:", "").trim();
             else if (line.startsWith("data:")) dataContent += line.replace("data:", "").trim();
           });
 
+          // JSON 파싱 시도
           let parsedData;
           try { 
             parsedData = JSON.parse(dataContent); 
@@ -399,15 +473,20 @@
             log.textContent += `[${eventName}] ${dataContent}\n`;
           }
 
+          // 타임라인에 이벤트 추가
           addTimelineEvent(idx, (eventName === "error" ? "error" : (eventName.includes("loading") ? "loading" : "response")), eventName, parsedData);
 
+          // "response" 이벤트 수신 시 자동 종료
           if (eventName === "response") {
             disconnect(idx);
           }
         });
+        
+        // 콘솔 자동 스크롤
         log.scrollTop = log.scrollHeight;
       }
     } catch (err) {
+      // AbortError는 정상적인 연결 종료이므로 무시
       if (err.name !== 'AbortError') {
         log.textContent += "⚠ SSE error\n";
         addTimelineEvent(idx, "error", "error", { error: true });
@@ -416,8 +495,13 @@
     }
   }
 
+  /**
+   * SSE 연결 종료
+   * @param {number} idx - 엔드포인트 인덱스
+   */
   function disconnect(idx) {
     if (connections[idx]) {
+      // AbortController 또는 EventSource 종료
       if (connections[idx].abort) connections[idx].abort();
       else if (connections[idx].close) connections[idx].close();
       
