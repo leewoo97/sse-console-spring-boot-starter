@@ -5,6 +5,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,7 +46,7 @@ public class SseConsoleMetaController {
     @GetMapping("/api-list")
     public List<Map<String, Object>> apiList() {
         List<Map<String, Object>> endpoints = new ArrayList<>();
-        
+
         // Spring에 등록된 모든 핸들러 메서드 정보를 가져옴
         RequestMappingHandlerMapping mapping = applicationContext.getBean(RequestMappingHandlerMapping.class);
         Map<RequestMappingInfo, HandlerMethod> handlerMethods = mapping.getHandlerMethods();
@@ -53,21 +54,21 @@ public class SseConsoleMetaController {
         for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : handlerMethods.entrySet()) {
             HandlerMethod handler = entry.getValue();
             Class<?> beanType = handler.getBeanType();
-            
+
             // RestController 또는 Controller 어노테이션이 있는 클래스만 필터링
             if (!AnnotatedElementUtils.hasAnnotation(beanType, RestController.class) && !AnnotatedElementUtils.hasAnnotation(beanType, Controller.class)) {
                 continue;
             }
 
-            // produces에 text/event-stream이 있는지 확인 (SSE 엔드포인트만 선택)
-            Set<String> produces = entry.getKey().getProducesCondition().getProducibleMediaTypes().stream().map(MediaType::toString).collect(java.util.stream.Collectors.toSet());
-            if (produces.stream().noneMatch(p -> p.contains("text/event-stream"))) {
-                continue;
-            }
+            // produces 확인 - SSE 여부 판별
+            Set<String> produces = entry.getKey().getProducesCondition().getProducibleMediaTypes().stream()
+                    .map(MediaType::toString)
+                    .collect(java.util.stream.Collectors.toSet());
+            boolean isSse = produces.stream().anyMatch(p -> p.contains("text/event-stream"));
 
             // HTTP method (GET, POST 등) 추출
             Set<RequestMethod> methods = entry.getKey().getMethodsCondition().getMethods();
-            
+
             // URL path 패턴 추출
             Set<String> patterns = new LinkedHashSet<>();
             PathPatternsRequestCondition pathPatternsCondition = entry.getKey().getPathPatternsCondition();
@@ -77,10 +78,15 @@ public class SseConsoleMetaController {
             if (entry.getKey().getPatternsCondition() != null) {
                 patterns.addAll(entry.getKey().getPatternsCondition().getPatterns());
             }
-            
+
             String method = methods.isEmpty() ? "GET" : methods.iterator().next().name();
             String path = patterns.isEmpty() ? "" : patterns.iterator().next();
             if (path.isBlank()) {
+                continue;
+            }
+
+            // sse-console 자체 엔드포인트 제외
+            if (path.startsWith("/sse-console")) {
                 continue;
             }
 
@@ -89,32 +95,48 @@ public class SseConsoleMetaController {
             Method javaMethod = handler.getMethod();
             String[] discoveredNames = PARAMETER_NAME_DISCOVERER.getParameterNames(javaMethod);
             Parameter[] javaParams = javaMethod.getParameters();
-            
+
             for (int i = 0; i < javaParams.length; i++) {
                 Parameter param = javaParams[i];
                 RequestParam req = param.getAnnotation(RequestParam.class);
-                
-                // @RequestParam 어노테이션이 있는 파라미터만 처리
+                PathVariable pathVar = param.getAnnotation(PathVariable.class);
+
                 if (req != null) {
                     Map<String, Object> paramInfo = new HashMap<>();
 
-                    // @RequestParam의 name 또는 value 속성에서 파라미터 이름 추출
                     String requestParamName = null;
                     if (req.name() != null && !req.name().isBlank()) requestParamName = req.name();
                     else if (req.value() != null && !req.value().isBlank()) requestParamName = req.value();
 
-                    // 컴파일 시 남아있는 파라미터 이름 추출 (Java 8+ -parameters 옵션 필요)
                     String discovered = (discoveredNames != null && i < discoveredNames.length) ? discoveredNames[i] : null;
                     if (discovered != null && (discovered.equals("arg" + i) || discovered.isBlank())) {
                         discovered = null;
                     }
 
-                    // 최종 파라미터 이름 결정 (우선순위: @RequestParam > 컴파일된 이름 > 리플렉션 이름)
                     String effectiveName = requestParamName != null ? requestParamName : (discovered != null ? discovered : param.getName());
-                    
                     paramInfo.put("name", effectiveName);
                     paramInfo.put("type", param.getType().getSimpleName().toLowerCase());
                     paramInfo.put("required", req.required());
+                    paramInfo.put("in", "query");
+                    paramInfo.put("desc", "");
+                    params.add(paramInfo);
+                } else if (pathVar != null) {
+                    Map<String, Object> paramInfo = new HashMap<>();
+
+                    String pathVarName = null;
+                    if (pathVar.name() != null && !pathVar.name().isBlank()) pathVarName = pathVar.name();
+                    else if (pathVar.value() != null && !pathVar.value().isBlank()) pathVarName = pathVar.value();
+
+                    String discovered = (discoveredNames != null && i < discoveredNames.length) ? discoveredNames[i] : null;
+                    if (discovered != null && (discovered.equals("arg" + i) || discovered.isBlank())) {
+                        discovered = null;
+                    }
+
+                    String effectiveName = pathVarName != null ? pathVarName : (discovered != null ? discovered : param.getName());
+                    paramInfo.put("name", effectiveName);
+                    paramInfo.put("type", param.getType().getSimpleName().toLowerCase());
+                    paramInfo.put("required", true);
+                    paramInfo.put("in", "path");
                     paramInfo.put("desc", "");
                     params.add(paramInfo);
                 }
@@ -125,8 +147,9 @@ public class SseConsoleMetaController {
             ep.put("path", path);
             ep.put("method", method);
             ep.put("parameters", params);
-            ep.put("tag", beanType.getSimpleName()); // 컨트롤러 클래스 이름
-            ep.put("summary", handler.getMethod().getName()); // 메서드 이름
+            ep.put("tag", beanType.getSimpleName());
+            ep.put("summary", handler.getMethod().getName());
+            ep.put("type", isSse ? "sse" : "http");
             endpoints.add(ep);
         }
         return endpoints;

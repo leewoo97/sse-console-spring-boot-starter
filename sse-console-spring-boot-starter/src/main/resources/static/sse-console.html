@@ -3,514 +3,421 @@
 <head>
   <meta charset="UTF-8" />
   <title>SSE / API Test Console</title>
-
   <style>
-    /* 기본 페이지 스타일 */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   Roboto, Helvetica, Arial, sans-serif;
-      background: #fafafa;
-      padding: 16px;
-      color: #333;
-    }
-
-    h2 { margin-bottom: 6px; }
-
-    /* 안내 문구 스타일 */
-    .hint {
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 16px;
-    }
-
-    /* 각 SSE 엔드포인트 카드 스타일 */
-    .endpoint {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 18px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    }
-
-    .header { margin-bottom: 10px; }
-
-    /* 컨트롤러 클래스명 태그 */
-    .tag {
-      font-size: 12px;
-      color: #2563eb;
-      margin-bottom: 4px;
-    }
-
-    /* 메서드명과 HTTP 메서드 행 */
-    .summary-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
-
-    /* HTTP 메서드 배지 (GET, POST 등) */
-    .method {
-      font-weight: 700;
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      background: #2563eb;
-      color: #fff;
-    }
-
-    /* 엔드포인트 메서드명 */
-    .summary {
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    /* URL 경로 표시 */
-    .path {
-      font-family: monospace;
-      font-size: 13px;
-      color: #374151;
-      background: #f3f4f6;
-      padding: 4px 6px;
-      border-radius: 4px;
-      display: inline-block;
-    }
-
-    .section-title {
-      margin-top: 14px;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    /* Query Parameters 입력 영역 (JSON 형식) */
-    textarea {
-      width: 100%;
-      height: 130px;
-      font-family: monospace;
-      font-size: 13px;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #d1d5db;
-      background: #f9fafb;
-      resize: vertical;
-      box-sizing: border-box; 
-    }
-
-    /* 버튼 영역 */
-    .actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    button {
-      flex: 1;
-      padding: 8px;
-      font-size: 13px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    /* 전송 버튼 스타일 */
-    .btn-send { background: #2563eb; color: #fff; border: none; }
-    /* 연결 해제 버튼 스타일 */
-    .btn-disconnect {
-      background: #fff;
-      color: #374151;
-      border: 1px solid #d1d5db;
-    }
-
-    /* 콘솔 로그 영역 래퍼 */
-    .console-wrapper {
-      position: relative;
-      margin-top: 12px;
-    }
-
-    /* 콘솔 클리어 버튼 */
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:#fafafa; padding:16px; color:#333; }
+    h2 { margin-bottom:6px; }
+    .hint { font-size:13px; color:#666; margin-bottom:16px; }
+    .filter-tabs { display:flex; gap:8px; margin-bottom:20px; }
+    .filter-tab { padding:6px 16px; font-size:13px; border-radius:20px; border:1px solid #d1d5db; background:#fff; cursor:pointer; color:#374151; }
+    .filter-tab.active { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .endpoint { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:18px; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+    .endpoint.sse-type  { border-left:4px solid #2563eb; }
+    .endpoint.http-type { border-left:4px solid #16a34a; }
+    .header { margin-bottom:10px; }
+    .tag { font-size:12px; color:#2563eb; margin-bottom:4px; }
+    .summary-row { display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+    .method { font-weight:700; font-size:12px; padding:4px 8px; border-radius:4px; background:#2563eb; color:#fff; }
+    .method.GET    { background:#16a34a; }
+    .method.POST   { background:#2563eb; }
+    .method.PUT    { background:#d97706; }
+    .method.DELETE { background:#dc2626; }
+    .method.PATCH  { background:#7c3aed; }
+    .type-badge { font-size:11px; padding:2px 7px; border-radius:10px; font-weight:600; }
+    .type-badge.sse  { background:#dbeafe; color:#1d4ed8; }
+    .type-badge.http { background:#dcfce7; color:#15803d; }
+    .summary { font-size:16px; font-weight:600; }
+    .path { font-family:monospace; font-size:13px; color:#374151; background:#f3f4f6; padding:4px 6px; border-radius:4px; display:inline-block; }
+    .section-title { margin-top:14px; margin-bottom:6px; font-size:13px; font-weight:600; color:#374151; }
+    textarea { width:100%; height:130px; font-family:monospace; font-size:13px; padding:8px; border-radius:6px; border:1px solid #d1d5db; background:#f9fafb; resize:vertical; box-sizing:border-box; }
+    .actions { display:flex; gap:8px; margin-top:10px; }
+    button { flex:1; padding:8px; font-size:13px; border-radius:6px; cursor:pointer; }
+    .btn-send       { background:#2563eb; color:#fff; border:none; }
+    .btn-send.http  { background:#16a34a; }
+    .btn-disconnect { background:#fff; color:#374151; border:1px solid #d1d5db; }
+    .console-wrapper { position:relative; margin-top:12px; }
     .console-clear {
-      position: absolute;
-      top: 6px;
-      right: 18px;
-      padding: 4px 8px;
-      font-size: 11px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.9);
-      border: 1px solid #d1d5db;
-      cursor: pointer;
-      display: none; /* 기본적으로 숨김, 로그가 있을 때만 표시 */
+      position:absolute; top:6px; right:8px; z-index:10;
+      padding:4px 8px; font-size:11px; border-radius:4px;
+      background:rgba(255,255,255,0.9); border:1px solid #d1d5db;
+      cursor:pointer; display:none; flex:unset;
     }
+    .log-status { font-size:12px; color:#6b7280; margin-top:4px; min-height:16px; }
 
-    /* 콘솔 로그 출력 영역 (터미널 스타일) */
-    pre {
+    /* ── 가상 스크롤 ── */
+    .log-container {
+      position: relative;          /* 자식 absolute 기준점 */
       background: #111827;
       color: #22c55e;
-      padding: 12px;
       border-radius: 6px;
-      height: 220px;
-      overflow: auto;
+      height: 260px;
+      overflow-y: auto;
+      overflow-x: auto;
       resize: vertical;
+      font-family: monospace;
       font-size: 12px;
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-all;
       width: 100%;
       box-sizing: border-box;
     }
+    .log-container.http-log { background:#1e293b; color:#94a3b8; }
 
-    /* 이벤트 타임라인 영역 */
-    .timeline {
-      margin-top: 14px;
-      padding-left: 12px;
-      border-left: 2px solid #e5e7eb;
-      display: none; /* 기본적으로 숨김, 이벤트가 있을 때만 표시 */
-    }
-
-    /* 타임라인 각 이벤트 아이템 */
-    .timeline-item {
-      position: relative;
-      margin-bottom: 10px;
-      padding-left: 14px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    /* 타임라인 이벤트 마커 (점) */
-    .timeline-item::before {
-      content: "";
+    /* 스크롤바 높이 확보용 투명 spacer */
+    .log-spacer {
       position: absolute;
-      left: -7px;
-      top: 3px;
-      width: 8px;
-      height: 8px;
-      background: #2563eb;
-      border-radius: 50%;
+      top: 0; left: 0;
+      width: 1px;
+      pointer-events: none;
     }
 
-    /* 이벤트 타입별 색상 */
-    .timeline-item.loading::before { background: #f59e0b; } /* 로딩 상태: 주황색 */
-    .timeline-item.response::before { background: #16a34a; } /* 응답: 초록색 */
-    .timeline-item.error::before { background: #dc2626; } /* 에러: 빨간색 */
-    .timeline-item.closed::before { background: #9ca3af; } /* 종료: 회색 */
-
-    /* 선택된 타임라인 아이템 강조 */
-    .timeline-item.active {
-      font-weight: 600;
+    /* 각 줄 — position:absolute 로 컨테이너 기준 배치 */
+    .log-line {
+      position: absolute;
+      left: 0; right: 0;
+      padding: 0 12px;
+      white-space: pre;
+      line-height: 18px;
+      box-sizing: border-box;
     }
+
+    .timeline { margin-top:14px; padding-left:12px; border-left:2px solid #e5e7eb; display:none; }
+    .timeline-item { position:relative; margin-bottom:10px; padding-left:14px; font-size:12px; cursor:pointer; }
+    .timeline-item::before { content:""; position:absolute; left:-7px; top:3px; width:8px; height:8px; background:#2563eb; border-radius:50%; }
+    .timeline-item.loading::before  { background:#f59e0b; }
+    .timeline-item.response::before { background:#16a34a; }
+    .timeline-item.error::before    { background:#dc2626; }
+    .timeline-item.closed::before   { background:#9ca3af; }
+    .timeline-item.active { font-weight:600; }
   </style>
 </head>
-
 <body>
 
 <h2>SSE / API Test Console</h2>
-<div class="hint">
-  타임라인 클릭 시 해당 이벤트 데이터만 콘솔에 표시 (모든 이벤트 감지)
+<div class="hint">SSE 스트리밍 엔드포인트와 일반 HTTP API를 모두 테스트할 수 있습니다.</div>
+
+<div class="filter-tabs">
+  <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+  <button class="filter-tab" onclick="setFilter('sse',this)">SSE Only</button>
+  <button class="filter-tab" onclick="setFilter('http',this)">HTTP Only</button>
 </div>
 
-<!-- 동적으로 SSE 엔드포인트 목록이 렌더링될 컨테이너 -->
 <div id="endpoints"></div>
 
 <script>
-  // HTTP 메서드 목록
-  const HTTP_METHODS = ["get","post","put","delete","patch","options","head","trace"];
-  
-  // 새로고침 키 (캐시 방지용)
-  let refreshKey = 0;
-  
-  // 스키마 저장소 (사용되지 않음, 향후 확장 가능)
-  let schemaStore = {};
-  
-  // 각 엔드포인트별 SSE 연결 관리 객체
-  const connections = {};
-  
-  // 각 엔드포인트별 수신한 이벤트 데이터 저장소
-  // 각 엔드포인트별 수신한 이벤트 데이터 저장소
-  const eventStore = {};
+const LINE_H  = 18;
+const OVERSCAN = 8;
 
+let allEndpoints  = [];
+let currentFilter = 'all';
+let refreshKey    = 0;
 
-  // 페이지 로드 시 API 목록 불러오기
-  document.addEventListener("DOMContentLoaded", loadApiList);
+const logBuffers  = {};
+const connections = {};
+const eventStore  = {};
 
-  /**
-   * 서버로부터 SSE 엔드포인트 목록을 가져와 화면에 렌더링
-   */
-  async function loadApiList() {
-    const res = await fetch("/sse-console/api-list?_=" + Date.now(), { cache: "no-store" });
-    const endpoints = await res.json();
-    renderEndpoints(endpoints);
-  }
+document.addEventListener("DOMContentLoaded", loadApiList);
 
-  /**
-   * 엔드포인트 목록을 화면에 렌더링
-   * 각 엔드포인트마다 카드 형태의 UI를 생성
-   */
-  function renderEndpoints(endpoints) {
-    const root = document.getElementById("endpoints");
-    root.innerHTML = "";
+async function loadApiList() {
+  const res = await fetch("/sse-console/api-list?_=" + Date.now(), { cache:"no-store" });
+  allEndpoints = await res.json();
+  renderEndpoints(allEndpoints);
+}
 
-    endpoints.forEach((ep, idx) => {
-      // 각 엔드포인트별 이벤트 저장소 초기화
-      eventStore[idx] = [];
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderEndpoints(allEndpoints);
+}
 
-      // 파라미터 기반으로 예시 요청 JSON 생성
-      const example = buildRequestExample(ep.parameters);
+function renderEndpoints(endpoints) {
+  const root = document.getElementById("endpoints");
+  root.innerHTML = "";
+  const list = currentFilter === 'all' ? endpoints : endpoints.filter(e => e.type === currentFilter);
 
-      const div = document.createElement("div");
-      div.className = "endpoint";
-      div.innerHTML = `
-        <div class="header">
-          <div class="tag">${ep.tag}</div>
-          <div class="summary-row">
-            <span class="method">${ep.method}</span>
-            <span class="summary">${ep.summary}</span>
-          </div>
-          <div class="path">${ep.path}</div>
-        </div>
-
-        <div class="section-title">Query Parameters</div>
-        <textarea id="body-${idx}">${JSON.stringify(example, null, 2)}</textarea>
-
-        <div class="actions">
-          <button class="btn-send" onclick="connect(${idx}, '${ep.path}')">
-            Try it out (Catch All)
-          </button>
-          <button class="btn-disconnect" onclick="disconnect(${idx})">
-            Disconnect
-          </button>
-        </div>
-
-        <div class="console-wrapper">
-          <button class="console-clear" id="clear-${idx}" onclick="clearLog(${idx})">
-            Clear
-          </button>
-          <pre id="log-${idx}"></pre>
-        </div>
-
-        <div class="timeline" id="timeline-${idx}"></div>
-      `;
-      root.appendChild(div);
-    });
-  }
-
-  /**
-   * 타임라인에 이벤트 항목 추가
-   * @param {number} idx - 엔드포인트 인덱스
-   * @param {string} type - 이벤트 타입 (open, loading, response, error, closed)
-   * @param {string} label - 이벤트 라벨
-   * @param {*} payload - 이벤트 데이터
-   */
-  function addTimelineEvent(idx, type, label, payload) {
-    const tl = document.getElementById(`timeline-${idx}`);
-    tl.style.display = "block";
-
-    const eventIndex = eventStore[idx].length;
-    eventStore[idx].push(payload);
-
-    const item = document.createElement("div");
-    item.className = `timeline-item ${type}`;
-    item.innerHTML = `
-      <span class="timeline-label">${label}</span>
-      <span class="timeline-time">${new Date().toLocaleTimeString()}</span>
-    `;
-
-    // 타임라인 항목 클릭 시 해당 이벤트 데이터만 콘솔에 표시
-    item.onclick = () => showEvent(idx, eventIndex, item);
-    tl.appendChild(item);
-  }
-
-  /**
-   * 특정 이벤트 데이터를 콘솔에 표시
-   */
-  function showEvent(idx, eventIndex, el) {
-    const log = document.getElementById(`log-${idx}`);
-    document.querySelectorAll(`#timeline-${idx} .timeline-item`).forEach(i => i.classList.remove("active"));
-    el.classList.add("active");
-    log.textContent = JSON.stringify(eventStore[idx][eventIndex], null, 2);
-  }
-
-  /**
-   * 콘솔 로그 및 타임라인 초기화
-   */
-  function clearLog(idx) {
-    document.getElementById(`log-${idx}`).textContent = "";
-    document.getElementById(`clear-${idx}`).style.display = "none";
-    const tl = document.getElementById(`timeline-${idx}`);
-    tl.innerHTML = "";
-    tl.style.display = "none";
+  list.forEach((ep, idx) => {
     eventStore[idx] = [];
+    logBuffers[idx] = [];
+
+    const isSse   = ep.type === 'sse';
+    const example = buildExample(ep.parameters);
+    const pathHint = ep.parameters.filter(p => p.in === 'path')
+      .map(p => `<code>{${p.name}}</code>`).join(', ');
+
+    const div = document.createElement('div');
+    div.className = `endpoint ${isSse ? 'sse-type' : 'http-type'}`;
+    div.innerHTML = `
+      <div class="header">
+        <div class="tag">${ep.tag}</div>
+        <div class="summary-row">
+          <span class="method ${ep.method}">${ep.method}</span>
+          <span class="type-badge ${ep.type}">${ep.type.toUpperCase()}</span>
+          <span class="summary">${ep.summary}</span>
+        </div>
+        <div class="path">${ep.path}</div>
+        ${pathHint ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">Path variables: ${pathHint}</div>` : ''}
+      </div>
+
+      <div class="section-title">Parameters (JSON)</div>
+      <textarea id="body-${idx}">${JSON.stringify(example, null, 2)}</textarea>
+
+      <div class="actions">
+        <button class="${isSse ? 'btn-send' : 'btn-send http'}"
+                onclick="${isSse ? 'sseConnect' : 'httpSend'}(${idx},'${ep.path}','${ep.method}')">
+          ${isSse ? 'Try it out (Stream)' : 'Send Request'}
+        </button>
+        ${isSse ? `<button class="btn-disconnect" onclick="disconnect(${idx})">Disconnect</button>` : ''}
+      </div>
+
+      <div class="console-wrapper">
+        <button class="console-clear" id="clear-${idx}" onclick="clearLog(${idx})">Clear</button>
+        <div class="log-status" id="log-status-${idx}"></div>
+        <div class="log-container ${isSse ? '' : 'http-log'}" id="log-box-${idx}">
+          <div class="log-spacer" id="log-spacer-${idx}"></div>
+        </div>
+      </div>
+
+      <div class="timeline" id="timeline-${idx}"></div>
+    `;
+    root.appendChild(div);
+
+    document.getElementById(`log-box-${idx}`)
+      .addEventListener('scroll', () => repaint(idx), { passive: true });
+  });
+}
+
+// ── 가상 스크롤 ──────────────────────────────────────────
+function appendLog(idx, text) {
+  if (!logBuffers[idx]) logBuffers[idx] = [];
+  logBuffers[idx].push(...text.split('\n'));
+  repaint(idx, true);
+}
+
+function repaint(idx, autoScroll = false) {
+  const lines  = logBuffers[idx] || [];
+  const box    = document.getElementById(`log-box-${idx}`);
+  const spacer = document.getElementById(`log-spacer-${idx}`);
+  if (!box || !spacer) return;
+
+  const totalH = lines.length * LINE_H;
+  spacer.style.height = totalH + 'px';
+
+  if (autoScroll) box.scrollTop = totalH;
+
+  const scrollTop = box.scrollTop;
+  const viewH     = box.clientHeight;
+  const first     = Math.max(0, Math.floor(scrollTop / LINE_H) - OVERSCAN);
+  const last      = Math.min(lines.length, Math.ceil((scrollTop + viewH) / LINE_H) + OVERSCAN);
+
+  // 기존 .log-line 제거 후 보이는 범위만 새로 그림
+  box.querySelectorAll('.log-line').forEach(el => el.remove());
+
+  const frag = document.createDocumentFragment();
+  for (let i = first; i < last; i++) {
+    const el = document.createElement('div');
+    el.className = 'log-line';
+    el.style.top = (i * LINE_H) + 'px';
+    el.textContent = lines[i] ?? '';
+    frag.appendChild(el);
+  }
+  box.appendChild(frag);
+}
+
+// ── HTTP 요청 ─────────────────────────────────────────────
+async function httpSend(idx, path, method) {
+  let body;
+  try { body = JSON.parse(document.getElementById(`body-${idx}`).value); }
+  catch { alert("Invalid JSON"); return; }
+
+  logBuffers[idx] = [];
+  repaint(idx);
+  document.getElementById(`clear-${idx}`).style.display = 'block';
+  const statusEl = document.getElementById(`log-status-${idx}`);
+
+  let resolvedPath = path;
+  const queryParams = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (resolvedPath.includes(`{${k}}`)) resolvedPath = resolvedPath.replace(`{${k}}`, encodeURIComponent(v));
+    else queryParams[k] = v;
   }
 
-  /**
-   * 파라미터 정보를 기반으로 예시 요청 JSON 객체 생성
-   */
-  function buildRequestExample(parameters) {
-    const result = {};
-    parameters.forEach(p => {
-      // 타입별 기본값 설정
-      if (p.type === "string") result[p.name] = "";
-      else if (p.type === "integer" || p.type === "number") result[p.name] = 0;
-      else if (p.type === "boolean") result[p.name] = false;
-      else result[p.name] = null;
-    });
-    return result;
+  const isBody = ["POST","PUT","PATCH"].includes(method.toUpperCase());
+  let url = resolvedPath;
+  const opts = { method: method.toUpperCase() };
+  if (isBody) {
+    opts.headers = { "Content-Type": "application/json" };
+    opts.body = JSON.stringify(queryParams);
+  } else {
+    const qs = new URLSearchParams(queryParams);
+    if ([...qs].length) url += '?' + qs;
   }
 
-  /**
-   * SSE 연결 시작
-   * @param {number} idx - 엔드포인트 인덱스
-   * @param {string} path - SSE 엔드포인트 경로
-   */
-  async function connect(idx, path) {
-    // 기존 연결이 있으면 먼저 종료
-    disconnect(idx);
+  appendLog(idx, `▶ ${method.toUpperCase()} ${url}`);
+  statusEl.textContent = '요청 중...';
 
-    // Query Parameters JSON 파싱
-    let body;
-    try {
-      body = JSON.parse(document.getElementById(`body-${idx}`).value);
-    } catch {
-      alert("Invalid JSON");
-      return;
+  try {
+    const res = await fetch(url, opts);
+    appendLog(idx, `◀ ${res.status} ${res.statusText}`);
+    const ct = res.headers.get('content-type') || '';
+    let result;
+
+    if (ct.includes('application/json')) {
+      result = await res.json();
+      if (Array.isArray(result)) {
+        result.forEach(item => {
+          JSON.stringify(item, null, 2).split('\n').forEach(l => logBuffers[idx].push(l));
+          logBuffers[idx].push('');
+        });
+        repaint(idx, true);
+        statusEl.textContent = `완료: ${result.length.toLocaleString()}건`;
+      } else {
+        appendLog(idx, JSON.stringify(result, null, 2));
+        statusEl.textContent = '완료';
+      }
+    } else {
+      result = await res.text();
+      appendLog(idx, result);
+      statusEl.textContent = '완료';
+    }
+    addTimeline(idx, res.ok ? 'response' : 'error', `${res.status} ${res.statusText}`,
+      { status: res.status, count: Array.isArray(result) ? result.length : 1 });
+  } catch (err) {
+    appendLog(idx, `⚠ ${err.message}`);
+    statusEl.textContent = '오류';
+    addTimeline(idx, 'error', 'network error', { error: err.message });
+  }
+}
+
+// ── SSE 연결 ──────────────────────────────────────────────
+async function sseConnect(idx, path, method) {
+  disconnect(idx);
+  logBuffers[idx] = [];
+
+  let body;
+  try { body = JSON.parse(document.getElementById(`body-${idx}`).value); }
+  catch { alert("Invalid JSON"); return; }
+
+  let resolvedPath = path;
+  const queryParams = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (resolvedPath.includes(`{${k}}`)) resolvedPath = resolvedPath.replace(`{${k}}`, encodeURIComponent(v));
+    else queryParams[k] = v;
+  }
+
+  const params = new URLSearchParams(queryParams);
+  params.append("_refresh", ++refreshKey);
+  document.getElementById(`clear-${idx}`).style.display = 'block';
+  appendLog(idx, "▶ CONNECTING (STREAM MODE)...");
+
+  try {
+    const ctrl = new AbortController();
+    connections[idx] = ctrl;
+    addTimeline(idx, 'open', 'open', { status: 'connected' });
+
+    const res = await fetch(`${resolvedPath}?${params}`, { signal: ctrl.signal });
+    if (!res.ok) {
+      appendLog(idx, `⚠ HTTP ${res.status} ${res.statusText}\n${await res.text()}`);
+      addTimeline(idx, 'error', 'http-error', { status: res.status });
+      disconnect(idx); return;
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('text/event-stream')) {
+      appendLog(idx, `⚠ Not SSE (content-type: ${ct || '(none)'})\n${await res.text()}`);
+      addTimeline(idx, 'error', 'not-sse', { ct });
+      disconnect(idx); return;
+    }
+    if (!res.body) {
+      appendLog(idx, "⚠ Empty body");
+      addTimeline(idx, 'error', 'empty-body', {});
+      disconnect(idx); return;
     }
 
-    // Query String 생성
-    const params = new URLSearchParams(body);
-    params.append("_refresh", ++refreshKey);
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    let buf = '';
 
-    const log = document.getElementById(`log-${idx}`);
-    const clearBtn = document.getElementById(`clear-${idx}`);
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) { appendLog(idx, "⏹ Server closed the stream"); disconnect(idx); break; }
 
-    log.textContent += "▶ CONNECTING (STREAM MODE)...\n";
-    clearBtn.style.display = "block";
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
 
-    try {
-      // AbortController로 연결 취소 제어
-      const controller = new AbortController();
-      connections[idx] = controller;
-
-      addTimelineEvent(idx, "open", "open", { status: "connected" });
-
-      // Fetch API로 SSE 스트림 연결
-      const response = await fetch(`${path}?${params}`, { signal: controller.signal });
-
-      // HTTP 에러 체크
-      if (!response.ok) {
-        const text = await response.text();
-        log.textContent += `⚠ HTTP ${response.status} ${response.statusText}\n`;
-        log.textContent += text + "\n";
-        addTimelineEvent(idx, "error", "http-error", {
-          status: response.status,
-          statusText: response.statusText,
-          contentType: response.headers.get("content-type") || "",
+      parts.forEach(msg => {
+        if (!msg.trim()) return;
+        let evName = 'message', data = '';
+        msg.split('\n').forEach(line => {
+          if (line.startsWith('event:'))      evName = line.slice(6).trim();
+          else if (line.startsWith('data:'))  data  += line.slice(5).trim();
         });
-        disconnect(idx);
-        return;
-      }
-
-      // Content-Type이 text/event-stream인지 확인
-      const contentType = (response.headers.get("content-type") || "").toLowerCase();
-      if (!contentType.includes("text/event-stream")) {
-        const text = await response.text();
-        log.textContent += `⚠ Not an SSE response (content-type: ${contentType || "(none)"})\n`;
-        log.textContent += text + "\n";
-        addTimelineEvent(idx, "error", "not-sse", {
-          contentType,
-        });
-        disconnect(idx);
-        return;
-      }
-
-      // Response body가 비어있는지 확인
-      if (!response.body) {
-        log.textContent += "⚠ Empty response body\n";
-        addTimelineEvent(idx, "error", "empty-body", { empty: true });
-        disconnect(idx);
-        return;
-      }
-
-      // ReadableStream으로 SSE 데이터 스트리밍 읽기
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      let buffer = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        
-        // 스트림 종료
-        if (done) {
-          log.textContent += "⏹ Server closed the stream\n";
-          disconnect(idx);
-          break;
-        }
-
-        // 버퍼에 데이터 누적 후 "\n\n"으로 메시지 분리
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop();
-
-        // 각 SSE 메시지 파싱
-        parts.forEach(message => {
-          if (!message.trim()) return;
-
-          let eventName = "message";
-          let dataContent = "";
-
-          // "event:" 와 "data:" 라인 파싱
-          message.split("\n").forEach(line => {
-            if (line.startsWith("event:")) eventName = line.replace("event:", "").trim();
-            else if (line.startsWith("data:")) dataContent += line.replace("data:", "").trim();
-          });
-
-          // JSON 파싱 시도
-          let parsedData;
-          try { 
-            parsedData = JSON.parse(dataContent); 
-            log.textContent += `[${eventName}] ${JSON.stringify(parsedData, null, 2)}\n`;
-          } catch { 
-            parsedData = dataContent; 
-            log.textContent += `[${eventName}] ${dataContent}\n`;
-          }
-
-          // 타임라인에 이벤트 추가
-          addTimelineEvent(idx, (eventName === "error" ? "error" : (eventName.includes("loading") ? "loading" : "response")), eventName, parsedData);
-
-          // "response" 이벤트 수신 시 자동 종료
-          if (eventName === "response") {
-            disconnect(idx);
-          }
-        });
-        
-        // 콘솔 자동 스크롤
-        log.scrollTop = log.scrollHeight;
-      }
-    } catch (err) {
-      // AbortError는 정상적인 연결 종료이므로 무시
-      if (err.name !== 'AbortError') {
-        log.textContent += "⚠ SSE error\n";
-        addTimelineEvent(idx, "error", "error", { error: true });
-        disconnect(idx);
-      }
+        let parsed;
+        try   { parsed = JSON.parse(data); appendLog(idx, `[${evName}] ${JSON.stringify(parsed, null, 2)}`); }
+        catch { parsed = data;             appendLog(idx, `[${evName}] ${data}`); }
+        addTimeline(idx,
+          evName === 'error' ? 'error' : evName.includes('loading') ? 'loading' : 'response',
+          evName, parsed);
+        if (evName === 'response') disconnect(idx);
+      });
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      appendLog(idx, "⚠ SSE error");
+      addTimeline(idx, 'error', 'error', {});
+      disconnect(idx);
     }
   }
+}
 
-  /**
-   * SSE 연결 종료
-   * @param {number} idx - 엔드포인트 인덱스
-   */
-  function disconnect(idx) {
-    if (connections[idx]) {
-      // AbortController 또는 EventSource 종료
-      if (connections[idx].abort) connections[idx].abort();
-      else if (connections[idx].close) connections[idx].close();
-      
-      connections[idx] = null;
-      document.getElementById(`log-${idx}`).textContent += "⏹ Disconnected\n";
-      addTimelineEvent(idx, "closed", "closed", { closed: true });
-    }
+// ── 유틸 ─────────────────────────────────────────────────
+function disconnect(idx) {
+  if (connections[idx]) {
+    if (connections[idx].abort) connections[idx].abort();
+    else if (connections[idx].close) connections[idx].close();
+    connections[idx] = null;
+    appendLog(idx, "⏹ Disconnected");
+    addTimeline(idx, 'closed', 'closed', { closed: true });
   }
+}
+
+function clearLog(idx) {
+  logBuffers[idx] = [];
+  const box    = document.getElementById(`log-box-${idx}`);
+  const spacer = document.getElementById(`log-spacer-${idx}`);
+  if (box)    box.querySelectorAll('.log-line').forEach(el => el.remove());
+  if (spacer) spacer.style.height = '0';
+  document.getElementById(`clear-${idx}`).style.display = 'none';
+  document.getElementById(`log-status-${idx}`).textContent = '';
+  const tl = document.getElementById(`timeline-${idx}`);
+  tl.innerHTML = ''; tl.style.display = 'none';
+  eventStore[idx] = [];
+}
+
+function addTimeline(idx, type, label, payload) {
+  const tl = document.getElementById(`timeline-${idx}`);
+  tl.style.display = 'block';
+  const ei = eventStore[idx].length;
+  eventStore[idx].push(payload);
+  const item = document.createElement('div');
+  item.className = `timeline-item ${type}`;
+  item.innerHTML  = `<span>${label}</span> <span style="color:#9ca3af">${new Date().toLocaleTimeString()}</span>`;
+  item.onclick = () => {
+    document.querySelectorAll(`#timeline-${idx} .timeline-item`).forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    logBuffers[idx] = JSON.stringify(eventStore[idx][ei], null, 2).split('\n');
+    repaint(idx);
+  };
+  tl.appendChild(item);
+}
+
+function buildExample(parameters) {
+  const r = {};
+  parameters.forEach(p => {
+    if      (p.type === 'string')  r[p.name] = p.in === 'path' ? `{${p.name}}` : '';
+    else if (p.type === 'integer' || p.type === 'number') r[p.name] = 0;
+    else if (p.type === 'boolean') r[p.name] = false;
+    else                           r[p.name] = null;
+  });
+  return r;
+}
 </script>
-
 </body>
 </html>

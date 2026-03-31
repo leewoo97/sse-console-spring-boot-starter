@@ -96,6 +96,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>3.1.0</version>
+                <configuration>
+                    <!-- 로컬 install 시에는 GPG 서명 건너뜀. 배포 시: mvn deploy -Pgpg -->
+                    <skip>true</skip>
+                </configuration>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
