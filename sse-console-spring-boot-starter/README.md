@@ -33,6 +33,25 @@ dependencies {
 http://localhost:8080/sse-console.html
 ```
 
+> **⚠️ 보안 주의**: `sse-console`은 개발/테스트 전용 도구입니다.  
+> 프로덕션 환경에서 노출되지 않도록 반드시 아래 프로퍼티를 개발 프로필에서만 활성화하세요.
+
+### 활성화 방법
+
+`sse-console`은 **기본값이 비활성화**입니다. 사용하려면 `application.properties`(또는 `application.yml`)에 명시적으로 활성화해야 합니다.
+
+```properties
+# application-dev.properties (개발 환경 전용)
+sse.console.enabled=true
+```
+
+```yaml
+# application-dev.yml (개발 환경 전용)
+sse:
+  console:
+    enabled: true
+```
+
 ---
 
 ## 기술 상세 설명
