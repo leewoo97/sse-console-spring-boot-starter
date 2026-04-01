@@ -105,15 +105,6 @@
 const LINE_H  = 18;
 const OVERSCAN = 8;
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 let allEndpoints  = [];
 let currentFilter = 'all';
 let refreshKey    = 0;
@@ -149,31 +140,31 @@ function renderEndpoints(endpoints) {
     const isSse   = ep.type === 'sse';
     const example = buildExample(ep.parameters);
     const pathHint = ep.parameters.filter(p => p.in === 'path')
-      .map(p => `<code>{${escapeHtml(p.name)}}</code>`).join(', ');
+      .map(p => `<code>{${p.name}}</code>`).join(', ');
 
     const div = document.createElement('div');
     div.className = `endpoint ${isSse ? 'sse-type' : 'http-type'}`;
     div.innerHTML = `
       <div class="header">
-        <div class="tag">${escapeHtml(ep.tag)}</div>
+        <div class="tag">${ep.tag}</div>
         <div class="summary-row">
-          <span class="method ${escapeHtml(ep.method)}">${escapeHtml(ep.method)}</span>
-          <span class="type-badge ${escapeHtml(ep.type)}">${escapeHtml(ep.type).toUpperCase()}</span>
-          <span class="summary">${escapeHtml(ep.summary)}</span>
+          <span class="method ${ep.method}">${ep.method}</span>
+          <span class="type-badge ${ep.type}">${ep.type.toUpperCase()}</span>
+          <span class="summary">${ep.summary}</span>
         </div>
-        <div class="path">${escapeHtml(ep.path)}</div>
+        <div class="path">${ep.path}</div>
         ${pathHint ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">Path variables: ${pathHint}</div>` : ''}
       </div>
 
       <div class="section-title">Parameters (JSON)</div>
-      <textarea id="body-${idx}">${escapeHtml(JSON.stringify(example, null, 2))}</textarea>
+      <textarea id="body-${idx}">${JSON.stringify(example, null, 2)}</textarea>
 
       <div class="actions">
         <button class="${isSse ? 'btn-send' : 'btn-send http'}"
-                data-idx="${idx}" data-path="${escapeHtml(ep.path)}" data-method="${escapeHtml(ep.method)}" data-type="${isSse ? 'sse' : 'http'}">
+                onclick="${isSse ? 'sseConnect' : 'httpSend'}(${idx},'${ep.path}','${ep.method}')">
           ${isSse ? 'Try it out (Stream)' : 'Send Request'}
         </button>
-        ${isSse ? `<button class="btn-disconnect" data-disconnect="${idx}">Disconnect</button>` : ''}
+        ${isSse ? `<button class="btn-disconnect" onclick="disconnect(${idx})">Disconnect</button>` : ''}
       </div>
 
       <div class="console-wrapper">
@@ -187,19 +178,6 @@ function renderEndpoints(endpoints) {
       <div class="timeline" id="timeline-${idx}"></div>
     `;
     root.appendChild(div);
-
-    // onclick 이벤트를 data 속성 기반으로 연결 (XSS 방지)
-    div.querySelector('[data-idx]').addEventListener('click', function() {
-      const i = parseInt(this.dataset.idx, 10);
-      const p = this.dataset.path;
-      const m = this.dataset.method;
-      if (this.dataset.type === 'sse') sseConnect(i, p, m);
-      else httpSend(i, p, m);
-    });
-    const discBtn = div.querySelector('[data-disconnect]');
-    if (discBtn) discBtn.addEventListener('click', function() {
-      disconnect(parseInt(this.dataset.disconnect, 10));
-    });
 
     document.getElementById(`log-box-${idx}`)
       .addEventListener('scroll', () => repaint(idx), { passive: true });
